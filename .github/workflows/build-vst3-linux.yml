@@ -1,0 +1,156 @@
+name: Build VST3 (Linux)
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+    branches: ["**"]
+  workflow_dispatch:
+
+jobs:
+  build:
+    name: Build VST3 – ${{ matrix.arch }}
+    runs-on: ${{ matrix.runner }}
+
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: ubuntu-24.04
+            arch:   x86_64
+          - runner: ubuntu-24.04-arm
+            arch:   aarch64
+
+    steps:
+      # -----------------------------------------------------------------------
+      # 1. Check out the plugin project
+      # -----------------------------------------------------------------------
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          path: Quetzalcoatl
+
+      # -----------------------------------------------------------------------
+      # 2. Install build dependencies
+      # -----------------------------------------------------------------------
+      - name: Install dependencies
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends \
+            build-essential \
+            cmake \
+            ninja-build \
+            pkg-config \
+            git \
+            libfluidsynth-dev \
+            libfreetype6-dev \
+            libx11-dev \
+            libxext-dev \
+            libxrandr-dev \
+            libxinerama-dev \
+            libxcursor-dev \
+            libxi-dev \
+            libgl1-mesa-dev \
+            libasound2-dev \
+            libcurl4-openssl-dev \
+            libwebkit2gtk-4.1-dev \
+            libfontconfig1-dev
+
+      # -----------------------------------------------------------------------
+      # 3. Cache the HISE source tree (expensive shallow clone)
+      # -----------------------------------------------------------------------
+      - name: Cache HISE source
+        id: cache-hise
+        uses: actions/cache@v4
+        with:
+          path: hise-src
+          key: hise-src-${{ runner.os }}-${{ runner.arch }}-v1
+
+      - name: Clone HISE with JUCE submodule
+        if: steps.cache-hise.outputs.cache-hit != 'true'
+        run: |
+          git clone --depth=1 \
+            https://github.com/christophhart/HISE.git \
+            hise-src
+          cd hise-src
+          git submodule update --init --depth=1 -- JUCE
+
+      # -----------------------------------------------------------------------
+      # 4. Write the JUCE root CMakeLists.txt
+      #    (JUCE_customized has no root CMakeLists.txt, so we create a minimal
+      #     one that loads JUCEUtils.cmake, builds juceaide, and adds modules)
+      # -----------------------------------------------------------------------
+      - name: Create JUCE root CMakeLists.txt
+        run: |
+          cat > hise-src/JUCE/CMakeLists.txt << 'JUCE_CMAKE_EOF'
+          cmake_minimum_required(VERSION 3.22)
+          project(JUCE6)
+
+          # Load JUCE's CMake utilities
+          include("${CMAKE_CURRENT_LIST_DIR}/extras/Build/CMake/JUCEUtils.cmake")
+
+          # Stub the optional recommended-flags targets that downstream projects may link against
+          foreach(_t juce_recommended_warning_flags juce_recommended_config_flags juce_recommended_lto_flags)
+              if(NOT TARGET ${_t})
+                  add_library(${_t} INTERFACE)
+                  add_library(juce::${_t} ALIAS ${_t})
+              endif()
+          endforeach()
+
+          # Build juceaide (the code-generator helper used by juce_generate_juce_header)
+          add_subdirectory(extras/Build)
+
+          # Expose all JUCE core modules
+          add_subdirectory(modules)
+          JUCE_CMAKE_EOF
+          # Strip leading spaces introduced by the heredoc indentation
+          sed -i 's/^          //' hise-src/JUCE/CMakeLists.txt
+
+      # -----------------------------------------------------------------------
+      # 5. Configure with CMake
+      # -----------------------------------------------------------------------
+      - name: Configure CMake
+        run: |
+          PROJ_DIR="${GITHUB_WORKSPACE}/Quetzalcoatl/Quetzalcoatl/Quetzalcoatl"
+          HISE_PATH="${GITHUB_WORKSPACE}/hise-src"
+          cmake -G Ninja \
+            -B build \
+            -S "${PROJ_DIR}" \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DHISE_PATH="${HISE_PATH}"
+
+      # -----------------------------------------------------------------------
+      # 6. Build the VST3 target
+      # -----------------------------------------------------------------------
+      - name: Build VST3
+        run: |
+          cmake --build build --target Quetzalcoatl_VST3 --parallel $(nproc)
+
+      # -----------------------------------------------------------------------
+      # 7. Locate the .so and verify it is ≥ 1 MB
+      # -----------------------------------------------------------------------
+      - name: Verify artifact size ≥ 1 MB
+        run: |
+          SO=$(find build -name "*.so" -path "*/Quetzalcoatl.vst3/*" | head -1)
+          if [ -z "$SO" ]; then
+            echo "ERROR: VST3 .so not found under build/"
+            find build -name "*.so" || true
+            exit 1
+          fi
+          SIZE=$(stat -c%s "$SO")
+          echo "Found: $SO  (${SIZE} bytes)"
+          if [ "$SIZE" -lt 1048576 ]; then
+            echo "ERROR: artifact is smaller than 1 MB (${SIZE} bytes)"
+            exit 1
+          fi
+          echo "OK – artifact is $((SIZE / 1024 / 1024)) MB"
+
+      # -----------------------------------------------------------------------
+      # 8. Upload per-arch artifact
+      # -----------------------------------------------------------------------
+      - name: Upload VST3 artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: Quetzalcoatl-VST3-linux-${{ matrix.arch }}
+          path: build/**/*.vst3/
+          if-no-files-found: error

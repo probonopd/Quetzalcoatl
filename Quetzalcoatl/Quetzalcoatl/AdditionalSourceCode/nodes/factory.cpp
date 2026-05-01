@@ -41,12 +41,10 @@ struct Factory: public scriptnode::dll::StaticLibraryHostFactory
 		registerDataNode<project::DelaySliders_networkdata>();
 		registerDataNode<project::dist3_networkdata>();
 		registerDataNode<project::dist4_networkdata>();
-		registerDataNode<project::_networkdata>();
 		registerDataNode<project::env_networkdata>();
 		registerDataNode<project::Env25_networkdata>();
 		registerDataNode<project::eventin_networkdata>();
 		registerDataNode<project::EventOut_networkdata>();
-		registerDataNode<project::_networkdata>();
 		registerDataNode<project::finalgain_networkdata>();
 		registerDataNode<project::Fm_networkdata>();
 		registerDataNode<project::FoldTests_networkdata>();
@@ -56,7 +54,6 @@ struct Factory: public scriptnode::dll::StaticLibraryHostFactory
 		registerDataNode<project::modsz_networkdata>();
 		registerDataNode<project::modtest2_networkdata>();
 		registerDataNode<project::ModToCable_networkdata>();
-		registerDataNode<project::_networkdata>();
 		registerDataNode<project::pan1_networkdata>();
 		registerDataNode<project::pan2_networkdata>();
 		registerDataNode<project::pan3_networkdata>();
@@ -87,9 +84,7 @@ struct Factory: public scriptnode::dll::StaticLibraryHostFactory
 		registerDataNode<project::PitchStage6_networkdata>();
 		registerDataNode<project::PitchStage7_networkdata>();
 		registerDataNode<project::PitchStage8_networkdata>();
-		registerDataNode<project::_networkdata>();
 		registerDataNode<project::PitchTop_networkdata>();
-		registerDataNode<project::_networkdata>();
 		registerDataNode<project::PreGain_networkdata>();
 		registerDataNode<project::PreSliders2_networkdata>();
 		registerDataNode<project::recdel_networkdata>();
