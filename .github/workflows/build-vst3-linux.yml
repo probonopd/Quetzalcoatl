@@ -84,7 +84,7 @@ jobs:
         run: |
           cat > hise-src/JUCE/CMakeLists.txt << 'JUCE_CMAKE_EOF'
           cmake_minimum_required(VERSION 3.22)
-          project(JUCE6)
+          project(JUCE6 VERSION 6.1.3)
 
           # JUCE_SOURCE_DIR and JUCE_BINARY_DIR are required by juceaide's cmake
           # re-invocation (extras/Build/juceaide/CMakeLists.txt).  Without them,
