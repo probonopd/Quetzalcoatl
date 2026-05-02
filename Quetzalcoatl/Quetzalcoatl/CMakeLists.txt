@@ -105,6 +105,10 @@ target_include_directories(Quetzalcoatl PRIVATE
 # These match project_info.xml ExtraDefinitionsLinux + HISE frontend flags.
 # ---------------------------------------------------------------------------
 target_compile_definitions(Quetzalcoatl PRIVATE
+    # JUCE features
+    JUCE_WEB_BROWSER=0
+    JUCE_USE_CURL=0
+
     # HISE build mode
     USE_FRONTEND=1
     USE_BACKEND=0
