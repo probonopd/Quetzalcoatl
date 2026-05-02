@@ -119,6 +119,12 @@
 // HISE DSP Library flags
 // ============================================================================
 
+// Disable SNEX JIT console output: MainController::writeToConsole only exists
+// in backend builds; in a compiled frontend plugin the console is not present.
+#ifndef ENABLE_CONSOLE_OUTPUT
+#define ENABLE_CONSOLE_OUTPUT 0
+#endif
+
 #ifndef HISE_INCLUDE_FAUST
 #define HISE_INCLUDE_FAUST 0
 #endif
@@ -152,7 +158,7 @@
 // ============================================================================
 
 #ifndef HISE_INCLUDE_SNEX
-#define HISE_INCLUDE_SNEX 1
+#define HISE_INCLUDE_SNEX 0
 #endif
 
 // ============================================================================
